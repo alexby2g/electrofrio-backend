@@ -1,24 +1,22 @@
 FROM php:8.2-cli
 
 RUN apt-get update && apt-get install -y \
-    git unzip curl libsqlite3-dev
+    git unzip curl libpq-dev libzip-dev zip \
+    && docker-php-ext-install pdo pdo_pgsql zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install pdo pdo_sqlite
-
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
 COPY . .
 
-RUN cp .env.example .env
-
-RUN composer install --no-dev --optimize-autoloader
-
-RUN touch database/database.sqlite
-
-RUN php artisan key:generate
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
+    && chmod -R 775 storage bootstrap/cache \
+    && sed -i 's/\r$//' render-start.sh \
+    && chmod +x render-start.sh
 
 EXPOSE 10000
 
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=10000
+CMD ["sh", "render-start.sh"]
