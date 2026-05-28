@@ -9,6 +9,9 @@ use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\DetalleTecnicoController;
 use App\Http\Controllers\PagoController;
 
+// PRUEBA RÁPIDA PARA SABER SI EL BACKEND ESTÁ VIVO
+Route::get('health', fn () => response()->json(['ok' => true, 'message' => 'Backend funcionando']));
+
 // CLIENTES
 Route::get('clientes', [ClienteController::class, 'index']);
 Route::post('clientes', [ClienteController::class, 'store']);
