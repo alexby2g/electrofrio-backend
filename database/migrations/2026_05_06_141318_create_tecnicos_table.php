@@ -1,24 +1,20 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Legacy V1 schema. Kept as an empty migration so fresh V13.3 databases
+     * are created only by the consolidated June schema.
+     */
     public function up(): void
     {
-        Schema::create('tecnicos', function (Blueprint $table) {
-            $table->id();
-            $table->string('nombre');
-            $table->string('telefono')->nullable();
-            $table->string('especialidad')->nullable();
-            $table->timestamps();
-        });
+        //
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('tecnicos');
+        //
     }
 };
