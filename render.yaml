@@ -22,7 +22,15 @@ services:
         value: stderr
       - key: DB_CONNECTION
         value: pgsql
-      - key: DATABASE_URL
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
         sync: false
       - key: ADMIN_NAME
         value: Administrador Electro Frío
