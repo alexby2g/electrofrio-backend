@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
+     * Neon/PostgreSQL may leave the migration transaction aborted before
+     * Laravel executes the separate unique-index statement.
+     */
+    public bool $withinTransaction = false;
+
+    /**
      * Run the migrations.
      */
     public function up(): void
