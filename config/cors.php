@@ -19,10 +19,13 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', env('FRONTEND_URLS', env('FRONTEND_URL', 'http://localhost:9000,http://127.0.0.1:9000')))
-    ))),
+    'allowed_origins' => array_values(array_unique(array_filter(array_merge(
+        ['https://localhost', 'capacitor://localhost'],
+        array_map(
+            'trim',
+            explode(',', env('FRONTEND_URLS', env('FRONTEND_URL', 'http://localhost:9000,http://127.0.0.1:9000')))
+        )
+    )))),
 
     'allowed_origins_patterns' => [
         '#^https://electrofrio-frontend(?:-[a-z0-9-]+)?\\.vercel\\.app$#',
