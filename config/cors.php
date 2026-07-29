@@ -19,9 +19,14 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter(array_map('trim', explode(',', env('FRONTEND_URL', '*')))),
+    'allowed_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', env('FRONTEND_URLS', env('FRONTEND_URL', 'http://localhost:9000,http://127.0.0.1:9000')))
+    ))),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://electro-frio-frontend(?:-[a-z0-9-]+)?\\.vercel\\.app$#',
+    ],
 
     'allowed_headers' => ['*'],
 

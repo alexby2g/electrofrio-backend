@@ -9,19 +9,28 @@ class Pago extends Model
 {
     use HasFactory;
 
-    protected $table = 'pagos';
-
     protected $fillable = [
-        'servicio_id',
+        'cita_id',
+        'cliente_id',
         'monto',
-        'fecha_pago',
         'metodo_pago',
         'estado',
-        'observaciones'
+        'fecha_pago',
+        'observacion',
     ];
 
-    public function servicio()
+    protected $casts = [
+        'monto' => 'decimal:2',
+        'fecha_pago' => 'date:Y-m-d',
+    ];
+
+    public function cita()
     {
-        return $this->belongsTo(Servicio::class);
+        return $this->belongsTo(Cita::class);
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
     }
 }

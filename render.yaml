@@ -1,0 +1,76 @@
+databases:
+  - name: electrofrio-db
+    databaseName: electrofrio
+    user: electrofrio
+    plan: free
+
+services:
+  - type: web
+    name: electrofrio-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_NAME
+        value: Electro Frío
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: electrofrio-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: electrofrio-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: electrofrio-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: electrofrio-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: electrofrio-db
+          property: password
+      - key: ADMIN_NAME
+        value: Administrador Electro Frío
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: OTP_DRIVER
+        value: twilio
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      - key: WHATSAPP_GRAPH_VERSION
+        value: v23.0
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false

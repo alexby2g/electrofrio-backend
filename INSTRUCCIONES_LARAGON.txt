@@ -1,0 +1,22 @@
+ELECTRO FRIO API V10 - INSTALACION EN LARAGON
+================================================
+
+1. Abre Laragon y enciende MySQL.
+2. Pulsa el boton Terminal de Laragon.
+3. Entra a esta carpeta, por ejemplo:
+   cd C:\Users\HP\Desktop\laragon\laragon\www\bkelectrofrio_v10
+4. Ejecuta:
+   PREPARAR_Y_EJECUTAR_LARAGON.bat
+5. No cierres la terminal mientras uses Electro Frio.
+
+Comprobacion:
+http://127.0.0.1:8000/api/health
+
+Debe responder:
+{"estado":"ok","servicio":"Electro Frio API"}
+
+Acceso inicial:
+Configura ADMIN_USERNAME, ADMIN_EMAIL y ADMIN_PASSWORD en el archivo .env
+antes de ejecutar el seeder. No guardes la contraseña dentro del proyecto.
+
+Si aparece un error, toma una captura completa de la terminal.

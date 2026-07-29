@@ -31,4 +31,21 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'otp' => [
+        'driver' => env('OTP_DRIVER', 'local'),
+        'twilio' => [
+            'account_sid' => env('TWILIO_ACCOUNT_SID'),
+            'auth_token' => env('TWILIO_AUTH_TOKEN'),
+            'service_sid' => env('TWILIO_VERIFY_SERVICE_SID'),
+        ],
+    ],
+
+    'whatsapp' => [
+        'version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+        'token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+    ],
+
 ];

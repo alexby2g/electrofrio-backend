@@ -2,39 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Servicio extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'cliente_id',
-        'equipo_id',
-        'tecnico_id',
-        'tipo_servicio',
+        'nombre',
         'descripcion',
-        'fecha',
-        'hora',
-        'costo',
-        'estado',
+        'categoria',
+        'precio',
+        'activo',
     ];
 
-    public function cliente()
-    {
-        return $this->belongsTo(Cliente::class);
-    }
+    protected $casts = [
+        'precio' => 'decimal:2',
+        'activo' => 'boolean',
+    ];
 
-    public function tecnico()
+    public function citas()
     {
-        return $this->belongsTo(Tecnico::class);
-    }
-
-    public function equipo()
-    {
-        return $this->belongsTo(Equipo::class);
-    }
-
-    public function pagos()
-    {
-        return $this->hasMany(Pago::class);
+        return $this->hasMany(Cita::class);
     }
 }

@@ -2,24 +2,35 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Equipo extends Model
 {
-    protected $fillable = ['cliente_id', 'tipo', 'marca', 'modelo', 'capacidad'];
+    use HasFactory;
+
+    protected $fillable = [
+        'cliente_id',
+        'tipo',
+        'marca',
+        'modelo',
+        'serie',
+        'ubicacion',
+        'observacion',
+        'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
 
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    public function servicios()
+    public function citas()
     {
-        return $this->hasMany(Servicio::class);
-    }
-
-    public function detalleTecnico()
-    {
-        return $this->hasOne(DetalleTecnico::class);
+        return $this->hasMany(Cita::class);
     }
 }
