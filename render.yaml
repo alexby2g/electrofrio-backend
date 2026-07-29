@@ -1,9 +1,3 @@
-databases:
-  - name: electrofrio-db
-    databaseName: electrofrio
-    user: electrofrio
-    plan: free
-
 services:
   - type: web
     name: electrofrio-api
@@ -28,26 +22,8 @@ services:
         value: stderr
       - key: DB_CONNECTION
         value: pgsql
-      - key: DB_HOST
-        fromDatabase:
-          name: electrofrio-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: electrofrio-db
-          property: port
-      - key: DB_DATABASE
-        fromDatabase:
-          name: electrofrio-db
-          property: database
-      - key: DB_USERNAME
-        fromDatabase:
-          name: electrofrio-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: electrofrio-db
-          property: password
+      - key: DATABASE_URL
+        sync: false
       - key: ADMIN_NAME
         value: Administrador Electro Frío
       - key: ADMIN_EMAIL
