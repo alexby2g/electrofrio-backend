@@ -31,8 +31,11 @@ class AppServiceProvider extends ServiceProvider
          * Keep normal runtime transactions enabled while disabling only the
          * automatic transaction wrapper used by database migrations.
          */
-        $grammar = DB::connection()->getSchemaGrammar();
-        $transactions = new ReflectionProperty($grammar, 'transactions');
+        $connection = DB::connection();
+        $connection->useDefaultSchemaGrammar();
+
+        $grammar = $connection->getSchemaGrammar();
+        $transactions = new ReflectionProperty($grammar::class, 'transactions');
         $transactions->setAccessible(true);
         $transactions->setValue($grammar, false);
     }
