@@ -10,7 +10,7 @@ return new class extends Migration
      * Neon/PostgreSQL may leave the migration transaction aborted before
      * Laravel executes the separate unique-index statement.
      */
-    public bool $withinTransaction = false;
+    public $withinTransaction = false;
 
     /**
      * Run the migrations.
