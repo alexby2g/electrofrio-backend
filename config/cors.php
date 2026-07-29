@@ -25,6 +25,7 @@ return [
     ))),
 
     'allowed_origins_patterns' => [
+        '#^https://electrofrio-frontend(?:-[a-z0-9-]+)?\\.vercel\\.app$#',
         '#^https://electro-frio-frontend(?:-[a-z0-9-]+)?\\.vercel\\.app$#',
     ],
 
