@@ -138,10 +138,9 @@ class WhatsappMetaService
 
     private function exchangeCodeForToken(string $code): array
     {
-        $response = Http::asForm()
-            ->acceptJson()
+        $response = Http::acceptJson()
             ->timeout(20)
-            ->post($this->graphUrl('oauth/access_token'), [
+            ->get($this->graphUrl('oauth/access_token'), [
                 'client_id' => $this->appId,
                 'client_secret' => $this->appSecret,
                 'code' => $code,
