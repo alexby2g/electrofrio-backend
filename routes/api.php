@@ -27,6 +27,8 @@ Route::post('/auth/otp/verificar', [OtpController::class, 'verificar'])->middlew
 
 Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verificar']);
 Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'recibir']);
+Route::get('/whatsapp/webhook', [WhatsAppWebhookController::class, 'verificar']);
+Route::post('/whatsapp/webhook', [WhatsAppWebhookController::class, 'recibir']);
 
 Route::get('/detalle-tecnicos/{detalleTecnico}/evidencias/{evidencia}/archivo', [DetalleTecnicoController::class, 'verEvidencia'])
     ->middleware('signed')
@@ -38,6 +40,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     Route::middleware('role:administrador')->group(function () {
         Route::apiResource('usuarios', UsuarioController::class);
+        Route::post('/integraciones/whatsapp/conectar', [IntegracionController::class, 'conectar'])
+            ->middleware('throttle:10,1');
     });
 
     Route::get('/mensajes/no-leidos', [ConversacionController::class, 'noLeidos']);
