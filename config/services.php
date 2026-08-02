@@ -41,11 +41,19 @@ return [
     ],
 
     'whatsapp' => [
-        'version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+        'version' => env('META_GRAPH_VERSION', env('WHATSAPP_GRAPH_VERSION', 'v26.0')),
         'token' => env('WHATSAPP_ACCESS_TOKEN'),
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
-        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
-        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'verify_token' => env('META_WEBHOOK_VERIFY_TOKEN', env('WHATSAPP_VERIFY_TOKEN')),
+        'app_secret' => env('META_APP_SECRET', env('WHATSAPP_APP_SECRET')),
+    ],
+
+    'meta_whatsapp' => [
+        'app_id' => env('META_APP_ID'),
+        'app_secret' => env('META_APP_SECRET'),
+        'config_id' => env('META_CONFIG_ID'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v26.0'),
+        'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN', env('WHATSAPP_VERIFY_TOKEN')),
     ],
 
 ];
