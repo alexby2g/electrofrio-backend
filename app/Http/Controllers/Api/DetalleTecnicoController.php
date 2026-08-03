@@ -4,13 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DetalleTecnico;
+use App\Services\AtencionWorkflowService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class DetalleTecnicoController extends Controller
 {
+    public function __construct(private readonly AtencionWorkflowService $workflow)
+    {
+    }
+
     public function index()
     {
         return response()->json([
@@ -21,9 +27,13 @@ class DetalleTecnicoController extends Controller
 
     public function store(Request $request)
     {
-        $datos = $this->validar($request);
-        $detalle = DetalleTecnico::updateOrCreate(['cita_id' => $datos['cita_id']], $datos)
-            ->load(['cita.cliente', 'cita.equipo', 'cita.servicio', 'tecnico']);
+        $detalle = DB::transaction(function () use ($request) {
+            $datos = $this->workflow->prepararGarantia($this->validar($request));
+            $detalle = DetalleTecnico::updateOrCreate(['cita_id' => $datos['cita_id']], $datos);
+            $this->workflow->sincronizarDesdeDetalle($detalle->load('cita'));
+
+            return $detalle->load(['cita.cliente', 'cita.equipo', 'cita.servicio', 'tecnico']);
+        });
 
         return response()->json(['mensaje' => 'Detalle técnico guardado correctamente', 'data' => $detalle->aplicarEvidenciasConDataUrl()], 201);
     }
@@ -35,7 +45,10 @@ class DetalleTecnicoController extends Controller
 
     public function update(Request $request, DetalleTecnico $detalleTecnico)
     {
-        $detalleTecnico->update($this->validar($request));
+        DB::transaction(function () use ($request, $detalleTecnico) {
+            $detalleTecnico->update($this->workflow->prepararGarantia($this->validar($request)));
+            $this->workflow->sincronizarDesdeDetalle($detalleTecnico->load('cita'));
+        });
 
         return response()->json(['mensaje' => 'Detalle técnico actualizado correctamente', 'data' => $detalleTecnico->load(['cita.cliente', 'cita.equipo', 'cita.servicio', 'tecnico'])->aplicarEvidenciasConDataUrl()]);
     }
@@ -154,10 +167,15 @@ class DetalleTecnicoController extends Controller
             'trabajo_realizado' => 'nullable|string',
             'estado_equipo' => 'nullable|string|max:80',
             'garantia' => 'nullable|string|max:160',
+            'garantia_dias' => 'nullable|integer|min:0|max:3650',
+            'garantia_inicio' => 'nullable|date',
+            'garantia_fin' => 'nullable|date',
+            'condiciones_garantia' => 'nullable|string|max:2000',
             'recomendaciones' => 'nullable|string',
             'fecha_entrega' => 'nullable|date',
             'repuestos' => 'nullable|string',
             'items' => 'nullable|array',
+            'items.*.tipo' => ['nullable', Rule::in(['mano_obra', 'material', 'otro'])],
             'items.*.cantidad' => 'nullable|numeric|min:0',
             'items.*.unidad' => 'nullable|string|max:30',
             'items.*.descripcion' => 'nullable|string|max:255',

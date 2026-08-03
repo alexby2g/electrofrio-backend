@@ -29,6 +29,10 @@ class DashboardController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
+        $etapas = Cita::select('etapa', DB::raw('COUNT(*) as total'))
+            ->groupBy('etapa')
+            ->pluck('total', 'etapa');
+
         $citas = Cita::with(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico'])
             ->latest()
             ->get();
@@ -37,7 +41,7 @@ class DashboardController extends Controller
             ->where('estado', 'pagado')
             ->get();
 
-        $trabajosAbiertos = $citas->whereNotIn('estado', ['entregado', 'concluida', 'cancelada'])->count();
+        $trabajosAbiertos = $citas->whereNotIn('etapa', ['garantia', 'cerrada'])->count();
         $pendienteCobro = $citas->where('estado', '!=', 'cancelada')->sum(function ($cita) {
             $pagado = $cita->pagos->where('estado', 'pagado')->sum('monto');
             return max((float) $cita->total - (float) $pagado, 0);
@@ -109,22 +113,30 @@ class DashboardController extends Controller
             ->values();
 
         $atencionesAtrasadas = $citas
-            ->whereNotIn('estado', ['terminado', 'entregado', 'concluida', 'cancelada'])
+            ->whereNotIn('etapa', ['pago', 'garantia', 'cerrada'])
             ->filter(fn ($cita) => $cita->fecha?->lt($hoy))
             ->sortBy('fecha')
             ->values();
 
         $garantias = DetalleTecnico::with(['cita.cliente', 'cita.equipo', 'cita.servicio'])
-            ->whereNotNull('garantia')
-            ->whereNotNull('fecha_entrega')
+            ->where(function ($query) {
+                $query->where('garantia_dias', '>', 0)
+                    ->orWhere(function ($legacy) {
+                        $legacy->whereNotNull('garantia')
+                            ->whereNotNull('fecha_entrega');
+                    });
+            })
             ->get()
             ->map(function ($detalle) use ($hoy) {
-                $dias = $this->extraerDiasGarantia($detalle->garantia);
-                if (!$dias) {
+                $dias = (int) $detalle->garantia_dias ?: $this->extraerDiasGarantia($detalle->garantia);
+                $inicio = $detalle->garantia_inicio ?: $detalle->fecha_entrega;
+                if (!$dias || !$inicio) {
                     return null;
                 }
 
-                $vence = Carbon::parse($detalle->fecha_entrega)->addDays($dias);
+                $vence = $detalle->garantia_fin
+                    ? Carbon::parse($detalle->garantia_fin)
+                    : Carbon::parse($inicio)->addDays($dias);
 
                 return [
                     'detalle_id' => $detalle->id,
@@ -138,6 +150,7 @@ class DashboardController extends Controller
                     'servicio' => $detalle->cita?->servicio?->nombre,
                     'garantia' => $detalle->garantia,
                     'fecha_entrega' => optional($detalle->fecha_entrega)->format('Y-m-d'),
+                    'garantia_inicio' => optional($inicio)->format('Y-m-d'),
                     'vence' => $vence->format('Y-m-d'),
                     'dias_restantes' => $hoy->diffInDays($vence, false),
                     'estado' => $vence->endOfDay()->gte($hoy) ? 'vigente' : 'vencida',
@@ -189,6 +202,15 @@ class DashboardController extends Controller
                 'terminado' => (int) (($estados['terminado'] ?? 0) + ($estados['concluida'] ?? 0)),
                 'entregado' => (int) ($estados['entregado'] ?? 0),
                 'cancelada' => (int) ($estados['cancelada'] ?? 0),
+            ],
+            'etapa_citas' => [
+                'cita' => (int) ($etapas['cita'] ?? 0),
+                'diagnostico' => (int) ($etapas['diagnostico'] ?? 0),
+                'propuesta' => (int) ($etapas['propuesta'] ?? 0),
+                'servicio' => (int) ($etapas['servicio'] ?? 0),
+                'pago' => (int) ($etapas['pago'] ?? 0),
+                'garantia' => (int) ($etapas['garantia'] ?? 0),
+                'cerrada' => (int) ($etapas['cerrada'] ?? 0),
             ],
             'servicios_top' => Cita::select('servicio_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(total) as ingresos'))
                 ->with('servicio')
