@@ -134,6 +134,8 @@ Route::put('/citas/{cita}/finalizar', [CitaController::class, 'finalizar']);
 Route::patch('/citas/{cita}/finalizar', [CitaController::class, 'finalizar']);
 Route::put('/citas/{cita}/estado', [CitaController::class, 'cambiarEstado']);
 Route::patch('/citas/{cita}/estado', [CitaController::class, 'cambiarEstado']);
+Route::put('/citas/{cita}/decision', [CitaController::class, 'decidir']);
+Route::patch('/citas/{cita}/decision', [CitaController::class, 'decidir']);
 
 /*
 |--------------------------------------------------------------------------

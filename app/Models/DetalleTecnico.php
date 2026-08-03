@@ -20,6 +20,10 @@ class DetalleTecnico extends Model
         'trabajo_realizado',
         'estado_equipo',
         'garantia',
+        'garantia_dias',
+        'garantia_inicio',
+        'garantia_fin',
+        'condiciones_garantia',
         'recomendaciones',
         'fecha_entrega',
         'repuestos',
@@ -30,6 +34,9 @@ class DetalleTecnico extends Model
 
     protected $casts = [
         'fecha_entrega' => 'date:Y-m-d',
+        'garantia_dias' => 'integer',
+        'garantia_inicio' => 'date:Y-m-d',
+        'garantia_fin' => 'date:Y-m-d',
         'items' => 'array',
         'evidencias' => 'array',
     ];

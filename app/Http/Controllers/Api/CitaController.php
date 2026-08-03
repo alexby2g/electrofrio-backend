@@ -4,23 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cita;
+use App\Models\Cliente;
 use App\Models\Equipo;
+use App\Services\AtencionWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CitaController extends Controller
 {
+    public function __construct(private readonly AtencionWorkflowService $workflow)
+    {
+    }
+
     public function index(Request $request)
     {
         $buscar = $request->query('buscar');
         $estado = $request->query('estado');
+        $etapa = $request->query('etapa');
+        $decision = $request->query('decision_cliente');
 
         $citas = Cita::with(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico.tecnico'])
             ->when($estado, fn ($query) => $query->where('estado', $estado))
+            ->when($etapa, fn ($query) => $query->where('etapa', $etapa))
+            ->when($decision, fn ($query) => $query->where('decision_cliente', $decision))
             ->when($buscar, function ($query) use ($buscar) {
                 $query->where(function ($searchQuery) use ($buscar) {
                     $searchQuery->where('descripcion', 'like', "%{$buscar}%")
+                        ->orWhere('problema_reportado', 'like', "%{$buscar}%")
+                        ->orWhere('propuesta', 'like', "%{$buscar}%")
+                        ->orWhere('direccion_servicio', 'like', "%{$buscar}%")
                         ->orWhere('observacion', 'like', "%{$buscar}%")
                         ->orWhereHas('cliente', function ($clienteQuery) use ($buscar) {
                             $clienteQuery->where('nombre', 'like', "%{$buscar}%");
@@ -49,10 +62,12 @@ class CitaController extends Controller
 
     public function store(Request $request)
     {
-        $datos = $this->validar($request);
+        $datos = $this->normalizarTotales($this->validar($request));
         $this->validarEquipoDelCliente($datos);
+        $datos = $this->completarDireccion($datos);
 
         $cita = Cita::create($datos)->load(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico.tecnico']);
+        $this->workflow->sincronizarDesdeCita($cita);
         $this->prepararEvidenciasParaMostrar($cita);
 
         return response()->json(['mensaje' => 'Cita registrada correctamente', 'data' => $cita], 201);
@@ -68,9 +83,11 @@ class CitaController extends Controller
 
     public function update(Request $request, Cita $cita)
     {
-        $datos = $this->validar($request);
+        $datos = $this->normalizarTotales($this->validar($request));
         $this->validarEquipoDelCliente($datos);
-        $cita->update($datos);
+        $cita->update($this->completarDireccion($datos));
+        $cita->load('detalleTecnico');
+        $this->workflow->sincronizarDesdeCita($cita);
 
         return response()->json(['mensaje' => 'Cita actualizada correctamente', 'data' => $this->prepararEvidenciasParaMostrar($cita->load(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico.tecnico']))]);
     }
@@ -110,9 +127,32 @@ class CitaController extends Controller
 
     public function finalizar(Cita $cita)
     {
-        $cita->update(['estado' => 'terminado']);
+        $this->workflow->finalizarServicio($cita);
 
         return response()->json(['mensaje' => 'Atención marcada como terminada correctamente', 'data' => $cita->fresh()->load(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico.tecnico'])]);
+    }
+
+    public function decidir(Request $request, Cita $cita)
+    {
+        $datos = $request->validate([
+            'decision_cliente' => ['required', Rule::in(Cita::DECISIONES)],
+            'motivo_rechazo' => 'nullable|string|max:1000',
+        ]);
+
+        $cita = $this->workflow->decidir(
+            $cita,
+            $datos['decision_cliente'],
+            $datos['motivo_rechazo'] ?? null
+        );
+
+        return response()->json([
+            'mensaje' => $datos['decision_cliente'] === 'aceptado'
+                ? 'Propuesta aceptada. El servicio quedó habilitado.'
+                : ($datos['decision_cliente'] === 'rechazado'
+                    ? 'Atención cerrada porque el cliente rechazó la propuesta.'
+                    : 'La propuesta continúa pendiente de respuesta.'),
+            'data' => $this->prepararEvidenciasParaMostrar($cita->load(['cliente', 'tecnico', 'servicio', 'equipo', 'pagos', 'detalleTecnico.tecnico'])),
+        ]);
     }
 
     public function cambiarEstado(Request $request, Cita $cita)
@@ -160,13 +200,46 @@ class CitaController extends Controller
             'tecnico_id' => 'nullable|exists:tecnicos,id',
             'servicio_id' => 'nullable|exists:servicios,id',
             'equipo_id' => 'nullable|exists:equipos,id',
+            'canal_contacto' => ['nullable', Rule::in(['llamada', 'whatsapp', 'presencial', 'otro'])],
+            'prioridad' => ['nullable', Rule::in(['baja', 'normal', 'alta', 'urgente'])],
+            'direccion_servicio' => 'nullable|string|max:255',
+            'referencia_ubicacion' => 'nullable|string|max:255',
+            'problema_reportado' => 'nullable|string',
             'fecha' => 'required|date',
             'hora' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'estado' => ['nullable', Rule::in($this->estadosPermitidos())],
             'descripcion' => 'nullable|string',
+            'propuesta' => 'nullable|string',
+            'costo_mano_obra' => 'nullable|numeric|min:0',
+            'costo_materiales' => 'nullable|numeric|min:0',
+            'descuento' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric|min:0',
             'observacion' => 'nullable|string',
         ]);
+    }
+
+    private function normalizarTotales(array $datos): array
+    {
+        $manoObra = (float) ($datos['costo_mano_obra'] ?? 0);
+        $materiales = (float) ($datos['costo_materiales'] ?? 0);
+        $descuento = (float) ($datos['descuento'] ?? 0);
+
+        if (array_key_exists('costo_mano_obra', $datos)
+            || array_key_exists('costo_materiales', $datos)
+            || array_key_exists('descuento', $datos)) {
+            $datos['total'] = max(round($manoObra + $materiales - $descuento, 2), 0);
+        }
+
+        return $datos;
+    }
+
+    private function completarDireccion(array $datos): array
+    {
+        if (blank($datos['direccion_servicio'] ?? null) && !empty($datos['cliente_id'])) {
+            $datos['direccion_servicio'] = Cliente::whereKey($datos['cliente_id'])->value('direccion');
+        }
+
+        return $datos;
     }
 
     private function validarEquipoDelCliente(array $datos): void

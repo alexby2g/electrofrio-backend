@@ -5,11 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Cita;
 use App\Models\Pago;
+use App\Services\AtencionWorkflowService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class PagoController extends Controller
 {
+    public function __construct(private readonly AtencionWorkflowService $workflow)
+    {
+    }
+
     public function index(Request $request)
     {
         $buscar = $request->query('buscar');
@@ -41,7 +47,12 @@ class PagoController extends Controller
             $datos['fecha_pago'] = now()->toDateString();
         }
 
-        $pago = Pago::create($datos)->load(['cliente', 'cita.servicio', 'cita.equipo']);
+        $pago = DB::transaction(function () use ($datos) {
+            $pago = Pago::create($datos)->load(['cliente', 'cita.servicio', 'cita.equipo']);
+            $this->workflow->sincronizarDesdePago($pago);
+
+            return $pago;
+        });
 
         return response()->json(['mensaje' => 'Pago registrado correctamente', 'data' => $pago], 201);
     }
@@ -60,7 +71,10 @@ class PagoController extends Controller
             $datos['cliente_id'] = $cita?->cliente_id;
         }
 
-        $pago->update($datos);
+        DB::transaction(function () use ($pago, $datos) {
+            $pago->update($datos);
+            $this->workflow->sincronizarDesdePago($pago->fresh('cita'));
+        });
 
         return response()->json(['mensaje' => 'Pago actualizado correctamente', 'data' => $pago->load(['cliente', 'cita.servicio', 'cita.equipo'])]);
     }
