@@ -131,7 +131,7 @@ class ConversacionController extends Controller
 
         $datos = $request->validate([
             'contenido' => ['nullable', 'string', 'max:5000', 'required_without:archivo'],
-            'canal' => ['nullable', Rule::in(['interno', 'whatsapp'])],
+            'canal' => ['nullable', Rule::in(['interno', 'whatsapp', 'whatsapp_manual'])],
             'archivo' => ['nullable', 'file', 'max:10240', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx'],
         ]);
 
@@ -140,17 +140,30 @@ class ConversacionController extends Controller
         $ruta = $archivo?->store("mensajes/{$conversacion->id}", 'public');
         $externoId = null;
         $metadata = null;
+        $telefono = null;
 
-        if ($canal === 'whatsapp') {
-            abort_if($archivo, 422, 'El envío de archivos por WhatsApp se habilitará al configurar las plantillas multimedia.');
+        if (in_array($canal, ['whatsapp', 'whatsapp_manual'], true)) {
+            abort_if(
+                $archivo,
+                422,
+                'Para enviar un archivo, ábrelo directamente desde WhatsApp Business.'
+            );
             $telefono = PhoneNumber::normalize(
                 $conversacion->cita?->cliente?->telefono
                     ?? $conversacion->canal_externo_id
             );
             abort_unless($telefono, 422, 'La conversación no tiene un teléfono destino válido.');
-            $respuesta = $whatsApp->enviarTexto($telefono, $datos['contenido']);
-            $externoId = data_get($respuesta, 'messages.0.id');
-            $metadata = ['respuesta_meta' => $respuesta];
+
+            if ($canal === 'whatsapp') {
+                $respuesta = $whatsApp->enviarTexto($telefono, $datos['contenido']);
+                $externoId = data_get($respuesta, 'messages.0.id');
+                $metadata = ['respuesta_meta' => $respuesta];
+            } else {
+                $metadata = [
+                    'modo' => 'aplicacion',
+                    'telefono' => $telefono,
+                ];
+            }
 
             if ($conversacion->canal_externo_id !== $telefono) {
                 $conversacion->update(['canal_externo_id' => $telefono]);
@@ -175,7 +188,11 @@ class ConversacionController extends Controller
                 'archivo_nombre' => $archivo?->getClientOriginalName(),
                 'archivo_tipo' => $archivo?->getClientMimeType(),
                 'mensaje_externo_id' => $externoId,
-                'estado' => $canal === 'whatsapp' ? 'aceptado' : 'enviado',
+                'estado' => match ($canal) {
+                    'whatsapp' => 'aceptado',
+                    'whatsapp_manual' => 'preparado',
+                    default => 'enviado',
+                },
                 'metadata' => $metadata,
                 'enviado_at' => now(),
             ]);
@@ -186,9 +203,17 @@ class ConversacionController extends Controller
             return $mensaje;
         });
 
+        $whatsappUrl = $canal === 'whatsapp_manual'
+            ? 'https://wa.me/'.preg_replace('/\D+/', '', (string) $telefono)
+                .'?text='.rawurlencode((string) ($datos['contenido'] ?? ''))
+            : null;
+
         return response()->json([
-            'mensaje' => 'Mensaje enviado.',
+            'mensaje' => $canal === 'whatsapp_manual'
+                ? 'Mensaje preparado para WhatsApp Business.'
+                : 'Mensaje enviado.',
             'data' => $mensaje->load('remitente:id,name,rol'),
+            'whatsapp_url' => $whatsappUrl,
         ], 201);
     }
 
